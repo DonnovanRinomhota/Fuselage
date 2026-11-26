@@ -276,3 +276,26 @@ export function tenderUploaded(t: {
   const text = `Tender uploaded by ${t.uploadedBy}\n\n${t.reference}: ${t.title}\n${t.entity}\nCategory: ${t.category}\nCloses: ${closes}\nSource: ${t.source}\n${t.notes ? `Notes: ${t.notes}\n` : ""}\nDocuments:\n${t.files.map((f) => `- ${fileLine(f)}`).join("\n") || "- none"}\n\nOpen in Sofala: ${link}`;
   return { subject, html, text };
 }
+
+/* ----------------------------------------------------------------------------
+ * Compliance reminder -> tenders inbox
+ * --------------------------------------------------------------------------*/
+export function complianceReminder(items: { name: string; issuer: string; expires: string; days: number }[]) {
+  const base = siteUrl();
+  const soonest = Math.min(...items.map((i) => i.days));
+  const heading = soonest < 0 ? "Certificates have expired" : soonest === 0 ? "Certificates expire today" : `Certificates expire in ${soonest} day${soonest === 1 ? "" : "s"}`;
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const html = layout({
+    preheader: `${items.length} certificate${items.length > 1 ? "s" : ""} to renew`,
+    heading,
+    product: "sofala",
+    body:
+      p("An expired certificate fails a bid at the preliminary check. Renew these before submitting any more tenders:") +
+      rows(items.map((i) => [`${i.name} (${i.issuer})`, `${fmt(i.expires)}${i.days < 0 ? ", expired" : `, ${i.days} days left`}`] as [string, unknown])) +
+      button(`${base}/portal/compliance`, "Open compliance in Sofala") +
+      `<p style="margin:0 0 16px;font-size:13.5px;color:${GRANITE};"><b style="color:${NAVY};">Why you got this:</b> Sofala sends reminders 60, 30, 14, 7, 3 and 1 days before a certificate expires.</p>`,
+    footer: `Sent by Sofala for ${esc(company.name)}.<br>`,
+  });
+  const text = `${heading}\n\n${items.map((i) => `- ${i.name} (${i.issuer}): ${fmt(i.expires)}, ${i.days} days left`).join("\n")}\n\nOpen: ${base}/portal/compliance`;
+  return { subject: `Sofala: ${heading}`, html, text };
+}

@@ -323,3 +323,20 @@ p { margin: 0 0 1em; max-width: var(--measure); }
 .screen-table th, .screen-table td { text-align: left; padding: .45rem .6rem .45rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
 .screen-table th { color: var(--granite); font-weight: 600; font-size: .85rem; }
 .page-actions { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.rec-bid { background: #e4f4ea; color: #145233; border-color: #b9dfc8; }
+.rec-no-bid { background: #fbe9e7; color: #7a1a14; border-color: #f1c2bd; }
+.rec-review { background: var(--gold-soft); color: #6b5310; border-color: #ecd9a1; }
+.rec-callout-bid { border-color: var(--green); background: #eef8f2; }
+.rec-callout-no-bid { border-color: var(--red); background: #fdf1ef; }
+.rec-callout-review { border-color: var(--gold); background: var(--gold-soft); }
+.cert-ok { background: #e4f4ea; color: #145233; }
+.cert-soon { background: var(--gold-soft); color: #6b5310; }
+.cert-now { background: #fbe9e7; color: #7a1a14; }
+.cert-expired { background: var(--red); color: #fff; }
+@media print {
+  .portal { display: block; background: #fff; }
+  .portal-top, .portal-nav, .sample-bar, .no-print { display: none !important; }
+  .portal-main { padding: 0; }
+  .panel { border-color: #ccc; break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}

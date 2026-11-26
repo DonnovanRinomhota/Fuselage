@@ -17,6 +17,8 @@ export type Screening = {
   table?: { head: string[]; rows: string[][] };
 };
 
+export type Recommendation = { decision: "bid" | "no-bid" | "review"; reason: string };
+
 export type Tender = {
   id: string;
   reference: string;
@@ -44,6 +46,10 @@ export type Tender = {
   uploadedBy?: string;
   uploadedAt?: string;
   notes?: string;
+  /** Spiritus bid / no-bid recommendation (proposal: "every relevant tender ... with a bid or no-bid recommendation"). */
+  recommendation?: Recommendation;
+  /** Date Spiritus identified and screened it (YYYY-MM-DD). Drives the USD 2.50 screening fee. Absent for staff uploads. */
+  screenedOn?: string;
 };
 
 const certs = (codes: string[]): Tender["checklist"] => [
@@ -59,6 +65,8 @@ export const sampleTenders: Tender[] = [
   // ---------------- Screened by the team ----------------
   {
     id: "coh-s17-2026",
+    recommendation: { decision: "bid", reason: "Strong fit: framework with repeat call-offs. Bid lots 6–12 (PVC and GMS) where local stock is reliable; skip brass and copper lots without manufacturer letters." },
+    screenedOn: "2026-11-21",
     reference: "COH/S.17/2026",
     title: "Framework agreement: supply and delivery of plumbing materials and accessories",
     buyer: "City of Harare",
@@ -94,6 +102,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "muastapp0099-26",
+    recommendation: { decision: "bid", reason: "Core product, clear quantities (1,700 m³) and no bid security. Bid if quarry and haulage prices are confirmed by 2 Dec." },
+    screenedOn: "2026-11-21",
     reference: "MUASTAPP0099/26",
     title: "Procurement of aggregates: quarry sand and quarry stone",
     buyer: "MUAST",
@@ -126,6 +136,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "acz-0593b-2026",
+    recommendation: { decision: "no-bid", reason: "Closed 17 Nov, and the compulsory site visit (29 Oct) was missed. Requires PRAZ SB003." },
+    screenedOn: "2026-11-21",
     reference: "ACZ/0593B/2026",
     title: "Borehole siting, drilling and capacity tests, JMNIA Bulawayo",
     buyer: "ACZ",
@@ -156,6 +168,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "norton-cleaningmat-10-26",
+    recommendation: { decision: "no-bid", reason: "Outside Fuselage's PRAZ categories; needs 3 cleaning-supply trade references." },
+    screenedOn: "2026-11-17",
     reference: "CLEANINGMAT/DET/10/26",
     title: "Framework agreement: cleaning materials and detergents (37 items)",
     buyer: "Norton Town Council",
@@ -179,6 +193,8 @@ export const sampleTenders: Tender[] = [
   // ---------------- Open tenders from the Government Gazette (13 Nov 2026) ----------------
   {
     id: "umz-gds-16-2026",
+    recommendation: { decision: "bid", reason: "Cement and culverts are both Fuselage lines and there is time to get quotes." },
+    screenedOn: "2026-11-26",
     reference: "UMZ/GDS/16/2026",
     title: "Supply and delivery of cement and culverts",
     buyer: "Umzingwane RDC",
@@ -201,6 +217,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "motid-opex-agt1-2026",
+    recommendation: { decision: "review", reason: "Good category fit (G/C/007). Decide once delivery locations are known: haulage drives the price." },
+    screenedOn: "2026-11-26",
     reference: "MOTID/OPEX AGT1 OF 2026",
     title: "Supply and delivery of aggregates for road maintenance",
     buyer: "MOTID",
@@ -224,6 +242,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "motid-opex-fa-ag35-2026",
+    recommendation: { decision: "review", reason: "Pair with AGT1 if bidding. Check framework length and lots first." },
+    screenedOn: "2026-11-26",
     reference: "MOTID/OPEX FA AG35 OF 2026",
     title: "Framework for supply and delivery of aggregates to the Department of Roads",
     buyer: "MOTID",
@@ -247,6 +267,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "npa-groc-prov-2-26",
+    recommendation: { decision: "bid", reason: "Same buyer type and goods as the Mpilo order. Price list needed by 7 Dec." },
+    screenedOn: "2026-11-26",
     reference: "NPA GROC AND PROV 2/26",
     title: "Supply and delivery of groceries and provisions",
     buyer: "NPA",
@@ -269,6 +291,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "ruwa-12-2026",
+    recommendation: { decision: "review", reason: "Re-tender: find out why the first round failed before investing time." },
+    screenedOn: "2026-11-26",
     reference: "Ruwa 12/2026",
     title: "Supply of groceries (framework), re-tender",
     buyer: "Ruwa Local Board",
@@ -291,6 +315,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "cog-fa-01-11-2026",
+    recommendation: { decision: "no-bid", reason: "Closes 27 Nov, 23:59: not enough time to source prices properly." },
+    screenedOn: "2026-11-26",
     reference: "COG/FA/01/11/2026",
     title: "Supply and delivery of building materials (framework agreement and call-off contracts)",
     buyer: "City of Gweru",
@@ -313,6 +339,8 @@ export const sampleTenders: Tender[] = [
   },
   {
     id: "zpc-ho-dom-121-2026",
+    recommendation: { decision: "review", reason: "Hwange is about 650 km from Norton. Bid only if transport can be priced competitively." },
+    screenedOn: "2026-11-26",
     reference: "ZPC/HO/DOM 121/2026",
     title: "Supply and delivery of housing materials at Hwange Power Station",
     buyer: "ZPC",
@@ -335,6 +363,8 @@ export const sampleTenders: Tender[] = [
   },
 ];
 
+export const recLabel: Record<Recommendation["decision"], string> = { bid: "Bid", "no-bid": "No bid", review: "Decide" };
+
 export const stateLabel: Record<BidState, string> = {
   new: "New match",
   shortlisted: "Shortlisted",
@@ -348,7 +378,7 @@ export const sampleInbox = [
   { id: 1, unread: true, when: "Today, 08:00", title: "Closes tomorrow: COG/FA/01/11/2026", body: "City of Gweru building materials framework closes 27 Nov, 23:59.", href: "/portal/tenders/cog-fa-01-11-2026" },
   { id: 2, unread: true, when: "Today, 07:10", title: "Input needed: MUASTAPP0099/26", body: "Add quarry prices and a haulage rate to Marondera so the bid can be costed.", href: "/portal/tenders/muastapp0099-26" },
   { id: 3, unread: false, when: "Yesterday, 17:00", title: "Draft ready for review: COH/S.17/2026", body: "Price schedule v1 for lots 6–12 is ready.", href: "/portal/tenders/coh-s17-2026" },
-  { id: 4, unread: false, when: "Mon, 09:00", title: "Certificates expire 31 Dec 2026", body: "All 5 PRAZ categories, ZIMRA tax clearance and NSSA need renewing.", href: "/portal/settings" },
+  { id: 4, unread: false, when: "Mon, 09:00", title: "Certificates expire 31 Dec 2026", body: "All 5 PRAZ categories, ZIMRA tax clearance and NSSA need renewing.", href: "/portal/compliance" },
 ];
 
 export function closesIn(iso: string, now = new Date()) {

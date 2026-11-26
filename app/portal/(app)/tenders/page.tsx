@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { closesIn, fmtClose, stateLabel } from "@/lib/sofala-sample";
 import { allTenders } from "@/lib/tenders";
-import { Due, StateBadge } from "@/components/portal/TenderBits";
+import { Due, RecBadge, StateBadge } from "@/components/portal/TenderBits";
 
 export const metadata = { title: "Tenders" };
 
@@ -12,6 +12,7 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
   const state = sp.state || "";
   const category = sp.category || "";
   const showClosed = sp.closed === "1";
+  const advice = sp.advice || "";
 
   const tenders = await allTenders();
   const categories = [...new Set(tenders.map((t) => t.category))].sort();
@@ -20,12 +21,13 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
     if (!showClosed && closesIn(t.closes).past) return false;
     if (q && !`${t.title} ${t.reference} ${t.buyer} ${t.entity}`.toLowerCase().includes(q)) return false;
     if (category && t.category !== category) return false;
+    if (advice && (t.recommendation?.decision ?? "none") !== advice) return false;
     if (state === "active") return ["shortlisted", "input_needed", "ready_for_review"].includes(t.state);
     if (state && t.state !== state) return false;
     return true;
   });
   rows = rows.sort((a, b) => +new Date(a.closes) - +new Date(b.closes));
-  const active = [q && `“${sp.q}”`, category, state && (state === "active" ? "Active bids" : stateLabel[state as keyof typeof stateLabel]), showClosed && "including closed"].filter(Boolean);
+  const active = [q && `“${sp.q}”`, category, advice && `advice: ${advice}`, state && (state === "active" ? "Active bids" : stateLabel[state as keyof typeof stateLabel]), showClosed && "including closed"].filter(Boolean);
 
   return (
     <>
@@ -53,6 +55,16 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
             {Object.entries(stateLabel).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
+        <div className="field">
+          <label htmlFor="advice">Advice</label>
+          <select id="advice" name="advice" defaultValue={advice}>
+            <option value="">Any</option>
+            <option value="bid">Bid</option>
+            <option value="review">Decide</option>
+            <option value="no-bid">No bid</option>
+            <option value="none">Awaiting screening</option>
+          </select>
+        </div>
         <div className="field" style={{ minWidth: 0 }}>
           <label><input type="checkbox" name="closed" value="1" defaultChecked={showClosed} style={{ width: "auto", marginRight: ".4rem" }} />Show closed</label>
         </div>
@@ -63,7 +75,7 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
       {rows.length ? (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Tender</th><th>Buyer</th><th>Category</th><th>Closes</th><th>Status</th></tr></thead>
+            <thead><tr><th>Tender</th><th>Buyer</th><th>Category</th><th>Closes</th><th>Advice</th><th>Status</th></tr></thead>
             <tbody>
               {rows.map((t) => (
                 <tr key={t.id}>
@@ -71,6 +83,7 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
                   <td>{t.buyer}</td>
                   <td>{t.category}{t.praz ? <div className="small muted">{t.praz}</div> : null}</td>
                   <td>{fmtClose(t.closes, t.timeKnown !== false)}<br /><Due iso={t.closes} /></td>
+                  <td><RecBadge rec={t.recommendation} /></td>
                   <td><StateBadge state={t.state} /></td>
                 </tr>
               ))}

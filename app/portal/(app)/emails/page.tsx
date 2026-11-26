@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { enquiryAutoReply, enquiryInternal, sofalaAlert, sofalaEvents, tenderUploaded, type Enquiry, type SofalaEvent } from "@/lib/email-templates";
+import { enquiryAutoReply, enquiryInternal, sofalaAlert, sofalaEvents, tenderUploaded, complianceReminder, type Enquiry, type SofalaEvent } from "@/lib/email-templates";
 import { sampleTenders } from "@/lib/sofala-sample";
+import { certs } from "@/lib/compliance";
 
 export const metadata = { title: "Email previews" };
 
@@ -16,9 +17,10 @@ function build(key: string) {
   const byId = (id: string) => sampleTenders.find((t) => t.id === id)!;
   const [a, b, c, d] = [byId("coh-s17-2026"), byId("muastapp0099-26"), byId("umz-gds-16-2026"), byId("npa-groc-prov-2-26")];
   const toT = (t: typeof a) => ({ id: t.id, reference: t.reference, title: t.title, buyer: t.buyer, category: t.category, closes: t.closes, deliveryTo: t.deliveryTo ?? undefined, publishedValue: t.publishedValue ?? undefined, reasons: t.reasons, unknowns: t.unknowns });
-  switch (key as SofalaEvent | "enquiry-team" | "enquiry-reply" | "tender-upload") {
+  switch (key as SofalaEvent | "enquiry-team" | "enquiry-reply" | "tender-upload" | "compliance") {
     case "enquiry-team": return enquiryInternal(sampleEnquiry);
     case "enquiry-reply": return enquiryAutoReply(sampleEnquiry);
+    case "compliance": return complianceReminder(certs.map((c) => ({ ...c, days: 30 })));
     case "tender-upload": return tenderUploaded({ ...c, uploadedBy: "Webster Chinyoka", source: "PRAZ e-GP (uploaded)", notes: "Cement and culverts, both our lines. Please price.", files: [{ name: "UMZ-GDS-16-2026_Bid_Document.pdf", kind: "tender", attached: true }, { name: "UMZ-GDS-16-2026_Screening.pdf", kind: "screening", attached: true }] });
     case "digest": return sofalaAlert({ event: "digest", recipientName: "Webster", tenders: [toT(c), toT(d), toT(byId("motid-opex-agt1-2026"))] });
     case "input_needed": return sofalaAlert({ event: "input_needed", recipientName: "Webster", tender: toT(b), items: ["Quarry price per m³: sand, 19mm and 13.2mm stone", "Haulage rate to Marondera Campus", "Technical literature for each item"] });
@@ -34,6 +36,7 @@ const tabs = [
   { key: "enquiry-team", label: "Website enquiry: to team" },
   { key: "enquiry-reply", label: "Website enquiry: auto-reply" },
   { key: "tender-upload", label: "Tender uploaded: to tenders inbox" },
+  { key: "compliance", label: "Compliance reminder" },
   ...Object.entries(sofalaEvents).map(([k, v]) => ({ key: k, label: `Sofala: ${v.label}` })),
 ];
 

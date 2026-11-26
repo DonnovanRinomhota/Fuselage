@@ -8,6 +8,8 @@ export default function PortalNav({ unread }: { unread: number }) {
     { href: "/portal", label: "Today" },
     { href: "/portal/tenders", label: "Tenders" },
     { href: "/portal/inbox", label: "Inbox", count: unread },
+    { href: "/portal/compliance", label: "Compliance" },
+    { href: "/portal/report", label: "Monthly report" },
   ];
   const settings = [
     { href: "/portal/settings", label: "Notifications" },

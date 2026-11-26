@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { closesIn, fmtClose } from "@/lib/sofala-sample";
 import { findTender } from "@/lib/tenders";
-import { Due, StateBadge } from "@/components/portal/TenderBits";
+import { Due, RecBadge, StateBadge } from "@/components/portal/TenderBits";
+import { recLabel } from "@/lib/sofala-sample";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,10 +37,23 @@ export default async function TenderPage({ params, searchParams }: { params: Pro
       )}
 
       <div style={{ display: "flex", gap: ".8rem", alignItems: "center", flexWrap: "wrap", marginTop: ".3rem" }}>
-        <StateBadge state={t.state} /><Due iso={t.closes} />
+        <RecBadge rec={t.recommendation} /><StateBadge state={t.state} /><Due iso={t.closes} />
       </div>
       <h1 style={{ marginTop: ".6rem", maxWidth: "32ch" }}>{t.title}</h1>
       <p className="muted" style={{ marginTop: ".5rem" }}>{t.entity} · {t.reference}</p>
+
+      {t.recommendation ? (
+        <div className={`callout rec-callout rec-callout-${t.recommendation.decision}`} style={{ margin: "1.2rem 0" }}>
+          <h3>Recommendation: {recLabel[t.recommendation.decision]}</h3>
+          <p>{t.recommendation.reason}</p>
+          {t.screenedOn && <p className="small muted" style={{ marginTop: ".5rem" }}>Screened by Spiritus, {new Date(t.screenedOn).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}. Fuselage makes the final decision.</p>}
+        </div>
+      ) : (
+        <div className="callout" style={{ margin: "1.2rem 0" }}>
+          <h3>Awaiting screening</h3>
+          <p>Spiritus will add a bid or no-bid recommendation once the documents are reviewed.</p>
+        </div>
+      )}
 
       {t.task && !past && (
         <div className="callout" style={{ margin: "1.4rem 0", borderColor: t.state === "input_needed" ? "var(--gold)" : "var(--water)", background: t.state === "input_needed" ? "var(--gold-soft)" : "var(--water-soft)" }}>

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireSession } from "@/lib/portal-session";
 import { closesIn, fmtClose, sampleInbox } from "@/lib/sofala-sample";
 import { allTenders } from "@/lib/tenders";
+import { certs, daysLeft } from "@/lib/compliance";
+import { RecBadge } from "@/components/portal/TenderBits";
 import { Due, StateBadge } from "@/components/portal/TenderBits";
 
 export const metadata = { title: "Today" };
@@ -16,6 +18,7 @@ export default async function Today() {
   const active = open.filter((t) => ["input_needed", "ready_for_review", "shortlisted"].includes(t.state));
   const review = open.filter((t) => t.state === "ready_for_review");
   const tasks = open.filter((t) => t.task);
+  const certDays = Math.min(...certs.map((c) => daysLeft(c.expires)));
 
   const tiles = [
     { n: newMatches.length, label: "New matches", href: "/portal/tenders?state=new" },
@@ -57,7 +60,7 @@ export default async function Today() {
                   <Link className="t" href={`/portal/tenders/${t.id}`}>{t.title}</Link>
                   <div className="meta">{t.buyer} · {t.reference} · closes {fmtClose(t.closes, t.timeKnown !== false)}</div>
                 </div>
-                <div style={{ textAlign: "right" }}><StateBadge state={t.state} /><br /><Due iso={t.closes} /></div>
+                <div style={{ textAlign: "right" }}><RecBadge rec={t.recommendation} /> <StateBadge state={t.state} /><br /><Due iso={t.closes} /></div>
               </li>
             ))}
           </ul>
@@ -72,6 +75,10 @@ export default async function Today() {
               </li>
             ))}
           </ul>
+          <Link href="/portal/compliance" className="callout rec-callout-no-bid" style={{ display: "block", marginTop: "1rem", textDecoration: "none", color: "inherit" }}>
+            <h3>Certificates expire in {certDays} days</h3>
+            <p>PRAZ, ZIMRA and NSSA all expire 31 Dec 2026. Open compliance.</p>
+          </Link>
         </section>
       </div>
     </>
