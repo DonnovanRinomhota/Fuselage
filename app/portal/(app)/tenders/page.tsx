@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { closesIn, fmtClose, sampleTenders, stateLabel } from "@/lib/sofala-sample";
+import { closesIn, fmtClose, stateLabel } from "@/lib/sofala-sample";
+import { allTenders } from "@/lib/tenders";
 import { Due, StateBadge } from "@/components/portal/TenderBits";
 
 export const metadata = { title: "Tenders" };
@@ -12,11 +13,12 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
   const category = sp.category || "";
   const showClosed = sp.closed === "1";
 
-  const categories = [...new Set(sampleTenders.map((t) => t.category))].sort();
-  let rows = sampleTenders.filter((t) => {
+  const tenders = await allTenders();
+  const categories = [...new Set(tenders.map((t) => t.category))].sort();
+  let rows = tenders.filter((t) => {
     if (scope === "profile" && !t.inProfile) return false;
     if (!showClosed && closesIn(t.closes).past) return false;
-    if (q && !`${t.title} ${t.reference} ${t.buyer}`.toLowerCase().includes(q)) return false;
+    if (q && !`${t.title} ${t.reference} ${t.buyer} ${t.entity}`.toLowerCase().includes(q)) return false;
     if (category && t.category !== category) return false;
     if (state === "active") return ["shortlisted", "input_needed", "ready_for_review"].includes(t.state);
     if (state && t.state !== state) return false;
@@ -27,7 +29,7 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
 
   return (
     <>
-      <h1>Tenders</h1>
+      <div className="page-actions"><h1>Tenders</h1><Link href="/portal/tenders/new" className="btn btn-primary">Upload a tender</Link></div>
       <div className="tabs" role="navigation" aria-label="Scope">
         <Link href="/portal/tenders" aria-current={scope === "profile" ? "page" : undefined}>Recommended for Fuselage</Link>
         <Link href="/portal/tenders?scope=all&closed=1" aria-current={scope === "all" ? "page" : undefined}>Explore all categories</Link>
@@ -65,10 +67,10 @@ export default async function Tenders({ searchParams }: { searchParams: Promise<
             <tbody>
               {rows.map((t) => (
                 <tr key={t.id}>
-                  <td><Link href={`/portal/tenders/${t.id}`}>{t.title}</Link><div className="small muted">{t.reference}</div></td>
+                  <td><Link href={`/portal/tenders/${t.id}`}>{t.title}</Link><div className="small muted">{t.reference}{t.uploadedBy ? ` · uploaded by ${t.uploadedBy}` : ""}{t.docs.length ? ` · ${t.docs.length} document${t.docs.length > 1 ? "s" : ""}` : ""}</div></td>
                   <td>{t.buyer}</td>
                   <td>{t.category}{t.praz ? <div className="small muted">{t.praz}</div> : null}</td>
-                  <td>{fmtClose(t.closes)}<br /><Due iso={t.closes} /></td>
+                  <td>{fmtClose(t.closes, t.timeKnown !== false)}<br /><Due iso={t.closes} /></td>
                   <td><StateBadge state={t.state} /></td>
                 </tr>
               ))}

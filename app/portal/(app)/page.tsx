@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { requireSession } from "@/lib/portal-session";
-import { closesIn, fmtClose, sampleInbox, sampleTenders } from "@/lib/sofala-sample";
+import { closesIn, fmtClose, sampleInbox } from "@/lib/sofala-sample";
+import { allTenders } from "@/lib/tenders";
 import { Due, StateBadge } from "@/components/portal/TenderBits";
 
 export const metadata = { title: "Today" };
 
 export default async function Today() {
   const s = await requireSession();
-  const open = sampleTenders.filter((t) => !closesIn(t.closes).past);
+  const tenders = await allTenders();
+  const open = tenders.filter((t) => !closesIn(t.closes).past);
   const newMatches = open.filter((t) => t.state === "new" && t.inProfile);
-  const closingSoon = open.filter((t) => t.state !== "new" && closesIn(t.closes).urgent);
+  const uploadedToday = tenders.filter((t) => t.uploadedAt && Date.now() - +new Date(t.uploadedAt) < 86_400_000).length;
+  const closingSoon = open.filter((t) => closesIn(t.closes).urgent);
   const active = open.filter((t) => ["input_needed", "ready_for_review", "shortlisted"].includes(t.state));
   const review = open.filter((t) => t.state === "ready_for_review");
   const tasks = open.filter((t) => t.task);
@@ -24,7 +27,7 @@ export default async function Today() {
   return (
     <>
       <h1>Today</h1>
-      <p className="muted" style={{ marginTop: ".4rem" }}>Signed in as {s.name}. PRAZ eGP last checked 08:00, next check 09:00 (sample).</p>
+      <div className="page-actions"><p className="muted" style={{ marginTop: ".4rem", marginBottom: 0 }}>Signed in as {s.name}. {open.length} open tenders{uploadedToday ? `, ${uploadedToday} uploaded today` : ""}.</p><Link href="/portal/tenders/new" className="btn btn-primary">Upload a tender</Link></div>
       <div className="today">
         {tiles.map((t) => (
           <Link key={t.label} href={t.href}><div className="panel"><span className="n">{t.n}</span>{t.label}</div></Link>
@@ -52,7 +55,7 @@ export default async function Today() {
               <li key={t.id}>
                 <div>
                   <Link className="t" href={`/portal/tenders/${t.id}`}>{t.title}</Link>
-                  <div className="meta">{t.buyer} · {t.reference} · closes {fmtClose(t.closes)}</div>
+                  <div className="meta">{t.buyer} · {t.reference} · closes {fmtClose(t.closes, t.timeKnown !== false)}</div>
                 </div>
                 <div style={{ textAlign: "right" }}><StateBadge state={t.state} /><br /><Due iso={t.closes} /></div>
               </li>

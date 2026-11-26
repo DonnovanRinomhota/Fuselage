@@ -239,3 +239,40 @@ export function sofalaAlert(a: SofalaAlert) {
   const text = `${heading}\n\n${textBody}\n\nOpen in Sofala: ${link}\n\nWhy you got this: ${meta.why}\nManage notifications: ${base}/portal/settings`;
   return { subject, html, text };
 }
+
+/* ----------------------------------------------------------------------------
+ * Tender uploaded through the portal -> company tenders inbox
+ * --------------------------------------------------------------------------*/
+
+export function tenderUploaded(t: {
+  id: string; reference: string; title: string; entity: string; category: string; closes: string; timeKnown?: boolean;
+  source: string; notes?: string; uploadedBy: string; files: { name: string; kind: string; attached: boolean }[];
+}) {
+  const base = siteUrl();
+  const link = `${base}/portal/tenders/${encodeURIComponent(t.id)}`;
+  const closes = t.timeKnown === false ? new Date(t.closes).toLocaleDateString("en-GB", { timeZone: "Africa/Harare", weekday: "short", day: "numeric", month: "short", year: "numeric" }) : fmtDate(t.closes);
+  const subject = `Tender uploaded: ${t.reference}: ${t.title}`.slice(0, 160);
+  const fileLine = (f: { name: string; kind: string; attached: boolean }) =>
+    `${f.name} (${f.kind === "screening" ? "screening" : f.kind === "tender" ? "tender document" : "document"})${f.attached ? "" : ": too large to attach, open in Sofala"}`;
+  const html = layout({
+    preheader: `${t.entity} · closes ${closes}`,
+    heading: `Tender uploaded: ${t.title}`,
+    product: "sofala",
+    body:
+      p(`${esc(t.uploadedBy)} uploaded a tender to Sofala. The documents are attached and saved in the portal.`) +
+      rows([
+        ["Reference", t.reference],
+        ["Procuring entity", t.entity],
+        ["Category", t.category],
+        ["Closes", closes],
+        ["Source", t.source],
+        ["Notes", t.notes],
+      ]) +
+      (t.files.length ? `<p style="margin:0 0 6px;font-weight:700;font-size:14.5px;">Documents</p>` + list(t.files.map(fileLine)) : p("No documents were attached.")) +
+      button(link, "Open tender in Sofala") +
+      `<p style="margin:0 0 16px;font-size:13.5px;color:${GRANITE};"><b style="color:${NAVY};">Why you got this:</b> This is the company tenders inbox. Every tender uploaded to Sofala is copied here.</p>`,
+    footer: `Sent by Sofala for ${esc(company.name)}.<br>`,
+  });
+  const text = `Tender uploaded by ${t.uploadedBy}\n\n${t.reference}: ${t.title}\n${t.entity}\nCategory: ${t.category}\nCloses: ${closes}\nSource: ${t.source}\n${t.notes ? `Notes: ${t.notes}\n` : ""}\nDocuments:\n${t.files.map((f) => `- ${fileLine(f)}`).join("\n") || "- none"}\n\nOpen in Sofala: ${link}`;
+  return { subject, html, text };
+}

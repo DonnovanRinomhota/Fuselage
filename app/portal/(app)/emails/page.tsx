@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { enquiryAutoReply, enquiryInternal, sofalaAlert, sofalaEvents, type Enquiry, type SofalaEvent } from "@/lib/email-templates";
+import { enquiryAutoReply, enquiryInternal, sofalaAlert, sofalaEvents, tenderUploaded, type Enquiry, type SofalaEvent } from "@/lib/email-templates";
 import { sampleTenders } from "@/lib/sofala-sample";
 
 export const metadata = { title: "Email previews" };
@@ -13,16 +13,18 @@ const sampleEnquiry: Enquiry = {
 };
 
 function build(key: string) {
-  const [a, b, c] = [sampleTenders[2], sampleTenders[1], sampleTenders[0]];
+  const byId = (id: string) => sampleTenders.find((t) => t.id === id)!;
+  const [a, b, c, d] = [byId("coh-s17-2026"), byId("muastapp0099-26"), byId("umz-gds-16-2026"), byId("npa-groc-prov-2-26")];
   const toT = (t: typeof a) => ({ id: t.id, reference: t.reference, title: t.title, buyer: t.buyer, category: t.category, closes: t.closes, deliveryTo: t.deliveryTo ?? undefined, publishedValue: t.publishedValue ?? undefined, reasons: t.reasons, unknowns: t.unknowns });
-  switch (key as SofalaEvent | "enquiry-team" | "enquiry-reply") {
+  switch (key as SofalaEvent | "enquiry-team" | "enquiry-reply" | "tender-upload") {
     case "enquiry-team": return enquiryInternal(sampleEnquiry);
     case "enquiry-reply": return enquiryAutoReply(sampleEnquiry);
-    case "digest": return sofalaAlert({ event: "digest", recipientName: "Webster", tenders: [toT(c), toT(sampleTenders[3])] });
-    case "input_needed": return sofalaAlert({ event: "input_needed", recipientName: "Webster", tender: toT(b), items: ["Supplier price for aggregates (per tonne or m³)", "Collection point", "Transport rate per km, or a runner quote"] });
-    case "draft_ready": return sofalaAlert({ event: "draft_ready", recipientName: "Webster", tender: toT(a), detail: "Price schedule v1 and the document checklist are complete." });
+    case "tender-upload": return tenderUploaded({ ...c, uploadedBy: "Webster Chinyoka", source: "PRAZ e-GP (uploaded)", notes: "Cement and culverts, both our lines. Please price.", files: [{ name: "UMZ-GDS-16-2026_Bid_Document.pdf", kind: "tender", attached: true }, { name: "UMZ-GDS-16-2026_Screening.pdf", kind: "screening", attached: true }] });
+    case "digest": return sofalaAlert({ event: "digest", recipientName: "Webster", tenders: [toT(c), toT(d), toT(byId("motid-opex-agt1-2026"))] });
+    case "input_needed": return sofalaAlert({ event: "input_needed", recipientName: "Webster", tender: toT(b), items: ["Quarry price per m³: sand, 19mm and 13.2mm stone", "Haulage rate to Marondera Campus", "Technical literature for each item"] });
+    case "draft_ready": return sofalaAlert({ event: "draft_ready", recipientName: "Webster", tender: toT(a), detail: "Price schedule v1 for lots 6–12 (PVC and GMS) and the document checklist are complete." });
     case "deadline": return sofalaAlert({ event: "deadline", recipientName: "Webster", tender: toT(b), detail: "This bid is still waiting for input and closes in under 48 hours." });
-    case "tender_changed": return sofalaAlert({ event: "tender_changed", recipientName: "Webster", tender: toT(a), items: ["Closing date moved from 28 Nov to 1 Dec 2026", "Addendum 1 added to the bid document"] });
+    case "tender_changed": return sofalaAlert({ event: "tender_changed", recipientName: "Webster", tender: toT(a), items: ["Example: closing date moved from 2 Dec to 4 Dec 2026", "Example: addendum 1 added to the bid document"] });
     case "failure": return sofalaAlert({ event: "failure", recipientName: "Webster", detail: "PRAZ eGP didn't respond at the 09:00 check. Sofala will retry at 10:00.", items: ["No tenders were missed; the next check covers the gap"] });
     default: return sofalaAlert({ event: "new_match", recipientName: "Webster", tender: toT(c) });
   }
@@ -31,6 +33,7 @@ function build(key: string) {
 const tabs = [
   { key: "enquiry-team", label: "Website enquiry: to team" },
   { key: "enquiry-reply", label: "Website enquiry: auto-reply" },
+  { key: "tender-upload", label: "Tender uploaded: to tenders inbox" },
   ...Object.entries(sofalaEvents).map(([k, v]) => ({ key: k, label: `Sofala: ${v.label}` })),
 ];
 

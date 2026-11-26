@@ -18,8 +18,8 @@ export default async function PortalLayout({ children }: { children: React.React
         </div>
       </header>
       <p className="sample-bar" role="note">
-        Preview with sample data. Tender references are real tenders the team screened in November; dates, values and
-        bid states are illustrative until the PRAZ connection is live.
+        Demo: tenders are real (team screenings and the 13 Nov 2026 Government Gazette). Bid progress, tasks and
+        inbox messages are examples until the automatic PRAZ connection is live.
       </p>
       <PortalNav unread={sampleInbox.filter((m) => m.unread).length} />
       <main className="portal-main" id="main">{children}</main>

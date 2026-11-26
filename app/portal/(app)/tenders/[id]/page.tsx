@@ -1,43 +1,51 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { closesIn, fmtClose, sampleTenders } from "@/lib/sofala-sample";
+import { closesIn, fmtClose } from "@/lib/sofala-sample";
+import { findTender } from "@/lib/tenders";
 import { Due, StateBadge } from "@/components/portal/TenderBits";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const t = sampleTenders.find((x) => x.id === id);
+  const t = await findTender(id);
   return { title: t?.reference ?? "Tender" };
 }
 
 const Unknown = () => <span className="unknown">Not yet known</span>;
+const statusText = { have: "On file", missing: "Missing", expires: "Expires 31 Dec 2026" } as const;
+const kindText = { tender: "Tender document", screening: "Screening", other: "Document" } as const;
 
-export default async function TenderPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TenderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { id } = await params;
-  const t = sampleTenders.find((x) => x.id === id);
+  const sp = await searchParams;
+  const t = await findTender(id);
   if (!t) notFound();
   const past = closesIn(t.closes).past;
   const supported = t.kind === "Goods" && t.inProfile;
-  const statusText = { have: "On file", missing: "Missing", expires: "Expires 31 Dec 2026" } as const;
+  const inbox = process.env.TENDERS_INBOX_EMAIL || process.env.ROUTE_TENDERS_EMAIL || "fuselageresources@outlook.com";
 
   return (
     <>
       <p className="small"><Link href="/portal/tenders">Tenders</Link></p>
+
+      {sp.uploaded && (
+        <div className={`notice ${sp.emailfail ? "notice-err" : "notice-ok"}`} role="status" style={{ margin: ".6rem 0 1rem" }}>
+          {sp.emailfail
+            ? "Tender saved, but the email to the tenders inbox didn't send. The documents are below; forward them manually."
+            : `Tender uploaded. The documents were emailed to ${inbox}.`}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: ".8rem", alignItems: "center", flexWrap: "wrap", marginTop: ".3rem" }}>
         <StateBadge state={t.state} /><Due iso={t.closes} />
       </div>
-      <h1 style={{ marginTop: ".6rem", maxWidth: "30ch" }}>{t.title}</h1>
-      <p className="muted" style={{ marginTop: ".5rem" }}>{t.buyer} · {t.reference}</p>
+      <h1 style={{ marginTop: ".6rem", maxWidth: "32ch" }}>{t.title}</h1>
+      <p className="muted" style={{ marginTop: ".5rem" }}>{t.entity} · {t.reference}</p>
 
-      {t.task && (
+      {t.task && !past && (
         <div className="callout" style={{ margin: "1.4rem 0", borderColor: t.state === "input_needed" ? "var(--gold)" : "var(--water)", background: t.state === "input_needed" ? "var(--gold-soft)" : "var(--water-soft)" }}>
           <h3>{t.state === "input_needed" ? "Input needed" : "Ready for your review"}</h3>
           <p>{t.task}</p>
-          <p style={{ marginTop: ".9rem", display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
-            {t.state === "ready_for_review"
-              ? (<><button className="btn btn-primary" disabled title="Available in the full release">Approve draft v1</button><button className="btn btn-ghost" disabled title="Available in the full release">Request changes</button></>)
-              : <button className="btn btn-primary" disabled title="Available in the full release">Add supplier quote</button>}
-          </p>
-          <p className="small muted" style={{ marginTop: ".4rem" }}>Buttons are switched off in the preview.</p>
+          <p className="small muted" style={{ marginTop: ".6rem" }}>Example task. Pricing and approvals come in the next phase.</p>
         </div>
       )}
 
@@ -47,46 +55,85 @@ export default async function TenderPage({ params }: { params: Promise<{ id: str
             <h2>Summary</h2>
             <p style={{ marginTop: ".6rem" }}>{t.summary}</p>
             <dl className="kv" style={{ marginTop: "1rem" }}>
-              <dt>Closes</dt><dd>{fmtClose(t.closes)} (Harare)</dd>
+              <dt>Closes</dt><dd>{fmtClose(t.closes, t.timeKnown !== false)}{t.timeKnown === false ? " (time not stated)" : " (Harare)"}</dd>
+              <dt>Procuring entity</dt><dd>{t.entity}</dd>
               <dt>Type</dt><dd>{t.kind}</dd>
               <dt>Category</dt><dd>{t.category}{t.praz ? `, PRAZ ${t.praz}` : ""}</dd>
               <dt>Delivery to</dt><dd>{t.deliveryTo ?? <Unknown />}</dd>
               <dt>Published value</dt><dd>{t.publishedValue ?? <Unknown />}</dd>
               <dt>Bid security</dt><dd>{t.bidSecurity ?? <Unknown />}</dd>
+              <dt>Source</dt><dd>{t.source}</dd>
+              {t.uploadedBy && (<><dt>Uploaded</dt><dd>{t.uploadedBy}, {new Date(t.uploadedAt!).toLocaleString("en-GB", { timeZone: "Africa/Harare", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</dd></>)}
             </dl>
           </section>
-          <section className="panel">
-            <h2>Why it {t.inProfile ? "matches" : "appears"}</h2>
-            <ul style={{ paddingLeft: "1.1rem", margin: ".6rem 0 0" }}>{t.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
-            {t.unknowns.length > 0 && (
-              <>
-                <h3 style={{ fontSize: "1rem", marginTop: "1rem", color: "#8a6a10" }}>Not confirmed yet</h3>
-                <ul style={{ paddingLeft: "1.1rem", margin: ".4rem 0 0" }}>{t.unknowns.map((u) => <li key={u}>{u}</li>)}</ul>
-              </>
-            )}
-          </section>
+
+          {t.screening && (
+            <section className="panel">
+              <h2>Screening ({t.screening.screenedOn})</h2>
+              <dl className="kv" style={{ marginTop: ".8rem" }}>
+                <dt>What they want</dt><dd>{t.screening.what}</dd>
+                <dt>Contract</dt><dd>{t.screening.contract}</dd>
+                <dt>Pricing basis</dt><dd>{t.screening.pricing}</dd>
+                <dt>How they pick</dt><dd>{t.screening.howPick}</dd>
+                <dt>Commercial terms</dt><dd>{t.screening.terms}</dd>
+              </dl>
+              {t.screening.table && (
+                <table className="screen-table">
+                  <thead><tr>{t.screening.table.head.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+                  <tbody>{t.screening.table.rows.map((r, i) => <tr key={i}>{r.map((c, j) => <td key={j}>{c}</td>)}</tr>)}</tbody>
+                </table>
+              )}
+            </section>
+          )}
+
+          {(t.reasons.length > 0 || t.unknowns.length > 0) && (
+            <section className="panel">
+              <h2>{t.uploadedBy ? "How it got here" : t.inProfile ? "Why it matches" : "Why it appears"}</h2>
+              <ul style={{ paddingLeft: "1.1rem", margin: ".6rem 0 0" }}>{t.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+              {t.unknowns.length > 0 && (
+                <>
+                  <h3 style={{ fontSize: "1rem", marginTop: "1rem", color: "#8a6a10" }}>Not confirmed yet</h3>
+                  <ul style={{ paddingLeft: "1.1rem", margin: ".4rem 0 0" }}>{t.unknowns.map((u) => <li key={u}>{u}</li>)}</ul>
+                </>
+              )}
+            </section>
+          )}
         </div>
+
         <div className="stack">
           <section className="panel">
-            <h2>Document checklist</h2>
-            <ul className="check" style={{ marginTop: ".6rem" }}>
-              {t.checklist.map((c) => <li key={c.item}><span>{c.item}</span><span className={`st-${c.status}`}>{statusText[c.status]}</span></li>)}
-            </ul>
+            <h2>Documents</h2>
+            {t.docs.length ? (
+              <ul className="check" style={{ marginTop: ".6rem" }}>
+                {t.docs.map((d) => (
+                  <li key={d.href}>
+                    <a href={d.href} target="_blank" rel="noopener">{d.name}</a>
+                    <span className="muted small">{kindText[d.kind]}{d.size ? `, ${d.size < 1048576 ? `${Math.max(1, Math.round(d.size / 1024))} KB` : `${(d.size / 1048576).toFixed(1)} MB`}` : ""}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ marginTop: ".6rem" }}>No documents yet. Download the bid document from <a href="https://egp.praz.org.zw" target="_blank" rel="noopener">e-GP</a> and <Link href="/portal/tenders/new">upload it</Link>.</p>
+            )}
           </section>
+
+          {t.checklist.length > 0 && (
+            <section className="panel">
+              <h2>Document checklist</h2>
+              <ul className="check" style={{ marginTop: ".6rem" }}>
+                {t.checklist.map((c) => <li key={c.item}><span>{c.item}</span><span className={`st-${c.status}`}>{statusText[c.status]}</span></li>)}
+              </ul>
+            </section>
+          )}
+
           <section className="panel">
             <h2>Bid preparation</h2>
             {past ? <p style={{ marginTop: ".6rem" }}>This tender has closed.</p>
-              : supported ? <p style={{ marginTop: ".6rem" }}>Sofala can read the requirements, gather prices, estimate delivery and draft the price schedule. Webster reviews and submits.</p>
-              : <p style={{ marginTop: ".6rem" }}>Automated costing isn&apos;t supported for {t.kind.toLowerCase()} {t.inProfile ? "" : "outside your profile "}in the first release. Assess this one manually.</p>}
-            {!past && state(t.state)}
+              : supported ? <p style={{ marginTop: ".6rem" }}>Next phase: Sofala reads the requirements, gathers prices, estimates delivery and drafts the price schedule. Webster reviews and submits.</p>
+              : <p style={{ marginTop: ".6rem" }}>Automated costing won&apos;t cover {t.kind.toLowerCase()} {t.inProfile ? "" : "outside the profile "}at first. Assess this one manually.</p>}
           </section>
         </div>
       </div>
     </>
   );
-}
-
-function state(s: string) {
-  if (s === "new" || s === "shortlisted") return <p><button className="btn btn-primary" disabled title="Available in the full release">Prepare bid</button></p>;
-  return null;
 }

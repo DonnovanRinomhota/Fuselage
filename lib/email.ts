@@ -11,6 +11,8 @@ export type OutgoingEmail = {
   /** Resend de-duplicates retries that reuse the same key for 24h. */
   idempotencyKey?: string;
   tags?: { name: string; value: string }[];
+  /** Base64 file attachments (Resend allows up to 40 MB per email after encoding). */
+  attachments?: { filename: string; content: string }[];
 };
 
 export type SendResult = { ok: true; id: string; via: "resend" | "outbox" } | { ok: false; error: string };
@@ -42,6 +44,7 @@ export async function sendEmail(email: OutgoingEmail): Promise<SendResult> {
         html: email.html,
         text: email.text,
         tags: email.tags,
+        attachments: email.attachments?.length ? email.attachments : undefined,
       }),
     });
     const json = (await res.json().catch(() => ({}))) as { id?: string; message?: string };
@@ -54,7 +57,7 @@ export async function sendEmail(email: OutgoingEmail): Promise<SendResult> {
 
 async function writeToOutbox(email: OutgoingEmail): Promise<SendResult> {
   const id = `outbox-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const header = `<!-- to: ${email.to.join(", ")}${email.cc?.length ? ` | cc: ${email.cc.join(", ")}` : ""} | reply-to: ${email.replyTo ?? "-"} | subject: ${email.subject} -->\n`;
+  const header = `<!-- to: ${email.to.join(", ")}${email.cc?.length ? ` | cc: ${email.cc.join(", ")}` : ""} | reply-to: ${email.replyTo ?? "-"} | subject: ${email.subject} | attachments: ${(email.attachments || []).map((a) => a.filename).join(", ") || "-"} -->\n`;
   try {
     const dir = process.env.VERCEL ? "/tmp/outbox" : path.join(process.cwd(), ".outbox");
     await fs.mkdir(dir, { recursive: true });

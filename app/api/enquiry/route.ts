@@ -6,7 +6,7 @@ import { divisions, enquiryTypes, team } from "@/lib/site";
 export const runtime = "nodejs";
 
 const ROUTES: Record<string, string | undefined> = {
-  webster: process.env.ROUTE_TENDERS_EMAIL,
+  webster: process.env.TENDERS_INBOX_EMAIL || process.env.ROUTE_TENDERS_EMAIL,
   darleen: process.env.ROUTE_QUOTES_EMAIL,
   janet: process.env.ROUTE_ORDERS_EMAIL,
 };
